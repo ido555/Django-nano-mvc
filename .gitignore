@@ -1,2 +1,4 @@
 .idea/
 venv/
+App/App/__pycache__
+App/Dcoya/__pycache__
