@@ -6,6 +6,7 @@ from .models import User
 from django.db.models.manager import Manager, QuerySet
 from django.db.utils import Error
 from jwt import encode, decode, PyJWTError
+from datetime import datetime, time
 
 secretiveSecret = "fpj2u6fCLsHeb6TjuvFBC9ULNmpN4xC9qW6Cz57wU969jzpEA2mPaCvb2rmwpXZXpTVWEShM4S75ysjeB3wBU3Y9QSQQu2SvwQqj5jWRMH5FWQCDCgAQuFWTdwPSKVXN"
 
@@ -34,6 +35,7 @@ def registerClient(request: WSGIRequest):
         return HttpResponse('Mock Token')
     return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
                         content="Must include 'username' and 'password' in a POST request's body in a JSON format")
+
 
 # def registerClient(username: str, password: str):
 #     try:
@@ -65,9 +67,12 @@ def isUsernameAndPasswordExists(username: str, password: str):
 
 
 def getAllUsers():
+    """
+    :return: a QuerySet, can be used to iterate Users inside it
+    """
     print("running getAllUsers()")
     try:
-        return QuerySet(model=User).all().__dict__
+        return QuerySet(model=User).all()
     except Error as e:
         print("Error at getAllUsers()")
         raise str(e)
@@ -80,6 +85,8 @@ def insertUser(username: str, password: str):
         user: User = User()
         user.username = username
         user.password = password
+        # TODO add expiry date
+
         token = str(encode({"usr": username, "pswd": password}, secretiveSecret, "HS256"))
         user.token = token
         user.save()
@@ -102,5 +109,12 @@ def authorizeUser(jwtToken: str):
                 return True
         return False
     except PyJWTError as e:
-        print("PyJWTError at authorizeUser()")
-        raise str(e)
+        print("Invalid token at authorizeUser()")
+        return False
+
+
+def echo(encodedJwt: str):
+    pass
+
+
+print(time.time())
