@@ -17,8 +17,6 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'App.settings')
 application = get_wsgi_application()
 
 # TODO add note about this in report
-# reset DB every time the server runs
 # call_command("flush", "--noinput")
 # call_command("makemigrations", "--noinput")
 # call_command("migrate", "--noinput")
-# print("finished resetting DB")

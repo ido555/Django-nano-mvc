@@ -4,5 +4,6 @@ from . import views
 
 urlpatterns = [
     path('register', views.registerClient, name="register"),
-    # path('getAllClients', views.getAllClients, name="getAllClients"),
+    path('echo', views.echo, name="echo"),
+    path('time', views.time, name="time"),
 ]

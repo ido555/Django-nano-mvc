@@ -1,21 +1,29 @@
 from django.core.handlers.wsgi import WSGIRequest
 from django.http import HttpResponse
 from http import HTTPStatus
-from json import loads as jsonLoads
+from json import loads as jsonLoads, JSONDecodeError
 from .models import User
 from django.db.models.manager import Manager, QuerySet
 from django.db.utils import Error
 from jwt import encode, decode, PyJWTError
-from time import time
+from time import time as serverTimestamp
+from .exceptions import ExpiredJWT, JWTLength
 
 secretiveSecret = "fpj2u6fCLsHeb6TjuvFBC9ULNmpN4xC9qW6Cz57wU969jzpEA2mPaCvb2rmwpXZXpTVWEShM4S75ysjeB3wBU3Y9QSQQu2SvwQqj5jWRMH5FWQCDCgAQuFWTdwPSKVXN"
+# if timeToExpiration is changed take effect when a user registers
 timeToExpiration = 3600  # seconds
+JWTMaxLength = 1024
+MSGMaxLength = 4096
 
 
 def registerClient(request: WSGIRequest):
     print("running registerClient()")
     if request.method == "POST":
-        data: dict = jsonLoads(request.body)
+        try:
+            data: dict = jsonLoads(request.body)
+        except JSONDecodeError:
+            return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
+                                content="Invalid JSON")
         if len(data.keys()) != 2 or "username" and "password" not in data.keys():
             return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
                                 content="must include only 2 parameters: 'username' and 'password' in a JSON format")
@@ -35,17 +43,6 @@ def registerClient(request: WSGIRequest):
                                 content='Something went  wrong, please try again later')
     return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
                         content="Must include 'username' and 'password' in a POST request's body in a JSON format")
-
-
-# def registerClient(username: str, password: str):
-#     try:
-#         if isUsernameExists(username):
-#             return False
-#         insertUser(username, password)
-#     except Error as e:
-#         print("Error at registerClient()")
-#     except PyJWTError as e:
-#         print("PyJWTError at registerClient()")
 
 
 def isUsernameExists(username: str):
@@ -81,13 +78,11 @@ def getAllUsers():
 def insertUser(username: str, password: str):
     print("running insertUser()")
     token = ""
-    expirationDate = int(time()) + timeToExpiration
+    expirationDate = int(serverTimestamp()) + timeToExpiration
     try:
         user: User = User()
         user.username = username
         user.password = password
-        # TODO add expiry date
-
         token = str(encode({"usr": username, "pswd": password, "expDate": expirationDate}, secretiveSecret, "HS256"))
         user.token = token
         user.save()
@@ -104,10 +99,12 @@ def insertUser(username: str, password: str):
 def authorizeUser(jwtToken: str):
     print("running authorizeUser()")
     try:
+        if len(jwtToken) > JWTMaxLength:
+            raise JWTLength
         payload = decode(jwtToken, secretiveSecret, "HS256")
         if "usr" and "pswd" and "expDate" in payload.keys():
-            if payload.get("expDate") > int(time()):
-                return False
+            if payload.get("expDate") < int(serverTimestamp()):
+                raise ExpiredJWT
             if isUsernameAndPasswordExists(payload.get("usr"), payload.get("pswd")):
                 return True
         return False
@@ -117,21 +114,79 @@ def authorizeUser(jwtToken: str):
 
 
 def echo(request: WSGIRequest):
-    # encodedJwt: str, msg: str
     if request.method == "POST":
-        data: dict = jsonLoads(request.body)
+        try:
+            data: dict = jsonLoads(request.body)
+        except JSONDecodeError:
+            return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
+                                content="Invalid JSON")
+        print(data.keys)
         if len(data.keys()) != 2 or "encodedJwt" and "msg" not in data.keys():
             return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
                                 content="must include only 2 parameters: 'msg' and 'encodedJwt' in a JSON format")
+        encodedJwt = data.get("encodedJwt")
+        msg = data.get("msg")
+        if len(msg) > MSGMaxLength:
+            return HttpResponse(status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                                content=f"'msg' parameter cannot exceed {MSGMaxLength} characters")
         try:
-
-            return HttpResponse(status=HTTPStatus.OK, content="")
+            if authorizeUser(encodedJwt):
+                return HttpResponse(status=HTTPStatus.OK, content=msg)
+            else:
+                return HttpResponse(status=HTTPStatus.UNAUTHORIZED, content="JWT invalid")
+        except ExpiredJWT:
+            print("ExpiredJWT in echo()")
+            return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
+                                content='Provided JWT is expired')
+        except JWTLength:
+            print("JWTLength error at echo()")
+            return HttpResponse(status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                                content=f"'encodedJwt' parameter cannot exceed {JWTMaxLength} characters")
         except Error:
+            print("error at echo()")
             return HttpResponse(status=HTTPStatus.INTERNAL_SERVER_ERROR,
                                 content='Something went  wrong, please try again later')
-    pass
+    return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
+                        content="Must include 'encodedJwt' and 'msg' in a POST request's body in a JSON format")
 
 
-for user in getAllUsers():
-    print(user.username)
-    print(decode(user.token, secretiveSecret, "HS256"))
+def time(request: WSGIRequest):
+    if request.method == "POST":
+        try:
+            data: dict = jsonLoads(request.body)
+        except JSONDecodeError:
+            return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
+                                content="Invalid JSON")
+        print(data.keys)
+        if len(data.keys()) != 1 or "encodedJwt" not in data.keys():
+            return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
+                                content="must include only 1 parameter: 'encodedJwt' in a JSON format")
+        encodedJwt = data.get("encodedJwt")
+        if len(encodedJwt) > JWTMaxLength:
+            return HttpResponse(status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                                content=f"'encodedJwt' parameter cannot exceed {JWTMaxLength} characters")
+        try:
+            if authorizeUser(encodedJwt):
+                return HttpResponse(status=HTTPStatus.OK, content=int(serverTimestamp()))
+            else:
+                return HttpResponse(status=HTTPStatus.UNAUTHORIZED, content="JWT invalid")
+        except ExpiredJWT:
+            print("expired JWT in echo()")
+            return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
+                                content='Provided JWT is expired')
+        except JWTLength:
+            print("JWTLength error at echo()")
+            return HttpResponse(status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                                content=f"'encodedJwt' parameter cannot exceed {JWTMaxLength} characters")
+        except Error:
+            print("error at echo()")
+            return HttpResponse(status=HTTPStatus.INTERNAL_SERVER_ERROR,
+                                content='Something went  wrong, please try again later')
+    return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
+                        content="Must include 'encodedJwt' in a POST request's body in a JSON format")
+
+
+# for user in getAllUsers():
+#     print(user.username)
+#     print(user.token)
+#     print(decode(user.token, secretiveSecret, "HS256"))
