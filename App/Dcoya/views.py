@@ -1,7 +1,10 @@
+from pprint import pprint
+
 from django.core.handlers.wsgi import WSGIRequest
 from django.http import HttpResponse
 from http import HTTPStatus
-from json import loads as jsonLoads, JSONDecodeError
+from json import loads as jsonLoads
+from json import JSONDecodeError
 from .models import User
 from django.db.models.manager import Manager, QuerySet
 from django.db.utils import Error
@@ -20,6 +23,7 @@ def registerClient(request: WSGIRequest):
     print("running registerClient()")
     if request.method == "POST":
         try:
+            print(request.body)
             data: dict = jsonLoads(request.body)
         except JSONDecodeError:
             return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
