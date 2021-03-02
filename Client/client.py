@@ -11,8 +11,8 @@ def newUserJSON():
 
 
 def apiPOST(endpoint: ApiURIs, tempJson):
-    req: Response = requests.post(endpoint.value, data=tempJson)
-    return req
+    res: Response = requests.post(endpoint.value, data=tempJson)
+    return res
 
 
 # r.status_code
@@ -25,18 +25,30 @@ while True:
         print("Register a new user: \n")
         j = newUserJSON()
         r: Response = apiPOST(ApiURIs.Register, j)
-        print(r.status_code)
-        print(r.content)
+        if r.status_code != 200:
+            print(f"status code: {r.status_code}")
+            print(str(r.text))
+        else:
+            JWT = r.text
         continue
 
-    print("1 - echo \n2 - time")
-    sel = str(input("enter selection"))
+    print("1 - echo \n2 - time \n3 - quit")
+    sel = str(input("enter selection: "))
     if JWT != "":
         if sel == "1":
-            r: Response = apiPOST(ApiURIs.Echo.value, json.dumps({"encodedJwt": JWT, "msg": input("enter text")}))
-            print(r.status_code)
-            print(str(r.content))
+            r: Response = apiPOST(ApiURIs.Echo, json.dumps({"encodedJwt": JWT, "msg": input("enter text: ")}))
+            if r.status_code != 200:
+                print(f"status code: {r.status_code}")
+                print(str(r.text))
+            else:
+                print(f"echo: {r.text}")
         if sel == "2":
-            r: Response = apiPOST(ApiURIs.Time.value, json.dumps({"encodedJwt": JWT}))
-            print(f"status code: {r.status_code}")
-            print(str(r.content))
+            r: Response = apiPOST(ApiURIs.Time, json.dumps({"encodedJwt": JWT}))
+
+            if r.status_code != 200:
+                print(f"status code: {r.status_code}")
+                print(str(r.text))
+            else:
+                print(f"server timestamp: {r.text}")
+        if sel == "3":
+            break

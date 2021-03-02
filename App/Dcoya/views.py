@@ -23,7 +23,6 @@ def registerClient(request: WSGIRequest):
     print("running registerClient()")
     if request.method == "POST":
         try:
-            print(request.body)
             data: dict = jsonLoads(request.body)
         except JSONDecodeError:
             return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
@@ -124,7 +123,6 @@ def echo(request: WSGIRequest):
         except JSONDecodeError:
             return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
                                 content="Invalid JSON")
-        print(data.keys)
         if len(data.keys()) != 2 or "encodedJwt" and "msg" not in data.keys():
             return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
                                 content="must include only 2 parameters: 'msg' and 'encodedJwt' in a JSON format")
@@ -161,7 +159,6 @@ def time(request: WSGIRequest):
         except JSONDecodeError:
             return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
                                 content="Invalid JSON")
-        print(data.keys)
         if len(data.keys()) != 1 or "encodedJwt" not in data.keys():
             return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
                                 content="must include only 1 parameter: 'encodedJwt' in a JSON format")
@@ -189,8 +186,3 @@ def time(request: WSGIRequest):
     return HttpResponse(status=HTTPStatus.EXPECTATION_FAILED,
                         content="Must include 'encodedJwt' in a POST request's body in a JSON format")
 
-
-# for user in getAllUsers():
-#     print(user.username)
-#     print(user.token)
-#     print(decode(user.token, secretiveSecret, "HS256"))
