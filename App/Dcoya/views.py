@@ -1,5 +1,3 @@
-from pprint import pprint
-
 from django.core.handlers.wsgi import WSGIRequest
 from django.http import HttpResponse
 from http import HTTPStatus
