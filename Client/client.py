@@ -1,7 +1,7 @@
 import json
 import requests
 from requests import Response
-from Client.enums import ApiURIs
+from enums import ApiURIs
 
 
 def newUserJSON():

@@ -2,3 +2,6 @@
 venv/
 App/App/__pycache__
 App/Dcoya/__pycache__
+App/Dcoya/migrations/__pycache__/
+Client/__pycache__/
+App/db.sqlite3

@@ -11,7 +11,6 @@ from time import time as serverTimestamp
 from .exceptions import ExpiredJWT, JWTLength
 
 secretiveSecret = "fpj2u6fCLsHeb6TjuvFBC9ULNmpN4xC9qW6Cz57wU969jzpEA2mPaCvb2rmwpXZXpTVWEShM4S75ysjeB3wBU3Y9QSQQu2SvwQqj5jWRMH5FWQCDCgAQuFWTdwPSKVXN"
-# if timeToExpiration is changed take effect when a user registers
 timeToExpiration = 3600  # seconds
 JWTMaxLength = 1024
 MSGMaxLength = 4096
